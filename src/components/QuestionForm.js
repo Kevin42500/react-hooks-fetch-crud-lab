@@ -1,25 +1,55 @@
 import React, { useState } from "react";
+import axios from "axios";
 
-function QuestionForm(props) {
-  const [formData, setFormData] = useState({
+function QuestionForm({ onQuestionAdded }) {
+  const initialFormData = {
     prompt: "",
-    answer1: "",
-    answer2: "",
-    answer3: "",
-    answer4: "",
+    answers: ["", "", "", ""],
     correctIndex: 0,
-  });
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   function handleChange(event) {
-    setFormData({
-      ...formData,
-      [event.target.name]: event.target.value,
-    });
+    const { name, value } = event.target;
+    if (name === "correctIndex") {
+      setFormData({
+        ...formData,
+        [name]: parseInt(value, 10),
+      });
+    } else if (name.startsWith("answer")) {
+      const index = parseInt(name.charAt(name.length - 1), 10);
+      const newAnswers = [...formData.answers];
+      newAnswers[index] = value;
+      setFormData({
+        ...formData,
+        answers: newAnswers,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    console.log(formData);
+
+    try {
+      // Send the new question data to the API
+      const response = await axios.post("http://localhost:4000/questions", {
+        prompt: formData.prompt,
+        answers: formData.answers,
+        correctIndex: formData.correctIndex,
+      });
+
+      // Clear the form and update the parent component with the new question
+      setFormData(initialFormData);
+      onQuestionAdded(response.data);
+    } catch (error) {
+      console.error("Error adding question:", error);
+    }
   }
 
   return (
@@ -35,42 +65,17 @@ function QuestionForm(props) {
             onChange={handleChange}
           />
         </label>
-        <label>
-          Answer 1:
-          <input
-            type="text"
-            name="answer1"
-            value={formData.answer1}
-            onChange={handleChange}
-          />
-        </label>
-        <label>
-          Answer 2:
-          <input
-            type="text"
-            name="answer2"
-            value={formData.answer2}
-            onChange={handleChange}
-          />
-        </label>
-        <label>
-          Answer 3:
-          <input
-            type="text"
-            name="answer3"
-            value={formData.answer3}
-            onChange={handleChange}
-          />
-        </label>
-        <label>
-          Answer 4:
-          <input
-            type="text"
-            name="answer4"
-            value={formData.answer4}
-            onChange={handleChange}
-          />
-        </label>
+        {formData.answers.map((answer, index) => (
+          <label key={index}>
+            Answer {index + 1}:
+            <input
+              type="text"
+              name={`answer${index}`}
+              value={answer}
+              onChange={handleChange}
+            />
+          </label>
+        ))}
         <label>
           Correct Answer:
           <select
@@ -78,10 +83,11 @@ function QuestionForm(props) {
             value={formData.correctIndex}
             onChange={handleChange}
           >
-            <option value="0">{formData.answer1}</option>
-            <option value="1">{formData.answer2}</option>
-            <option value="2">{formData.answer3}</option>
-            <option value="3">{formData.answer4}</option>
+            {formData.answers.map((answer, index) => (
+              <option key={index} value={index}>
+                {answer}
+              </option>
+            ))}
           </select>
         </label>
         <button type="submit">Add Question</button>
